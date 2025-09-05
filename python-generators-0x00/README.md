@@ -1,26 +1,20 @@
 # Python Generators - Getting Started
 
-## Task: Getting started with python generators
-
-### Objective
+## Objective
 
 Create a generator that streams rows from an SQL database one by one.
 
-### Steps Implemented
+## Implemented Features
 
-1. Connect to MySQL server.
-2. Create a database `ALX_prodev` if it does not exist.
-3. Create a table `user_data` with:
-   - `user_id` (Primary Key, UUID, Indexed)
-   - `name` (VARCHAR, NOT NULL)
-   - `email` (VARCHAR, NOT NULL)
-   - `age` (DECIMAL, NOT NULL)
-4. Populate table using `user_data.csv`.
-5. Verify setup with `0-main.py`.
+- `connect_db()`: Connect to MySQL server
+- `create_database()`: Create `ALX_prodev` if not exists
+- `connect_to_prodev()`: Connect to `ALX_prodev`
+- `create_table()`: Create `user_data` table
+- `insert_data()`: Populate `user_data` from `user_data.csv`
+- `stream_user_data()`: **Generator that streams rows lazily using `yield`**
 
-### Usage
+## Usage
 
 ```bash
-# Run setup
 ./0-main.py
 ```
