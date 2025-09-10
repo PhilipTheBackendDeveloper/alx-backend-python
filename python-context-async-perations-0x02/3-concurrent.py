@@ -2,26 +2,25 @@
 """
 3-concurrent.py
 
-Task:
-- Run multiple database queries concurrently using asyncio.gather
-- Use aiosqlite for async DB access
+Run multiple database queries concurrently using asyncio.gather
+with aiosqlite for async DB access.
 """
 
 import asyncio
 import aiosqlite
 
 
-async def async_fetch_users(db_name="users.db"):
+async def async_fetch_users():
     """Fetch all users asynchronously."""
-    async with aiosqlite.connect(db_name) as db:
+    async with aiosqlite.connect("users.db") as db:
         async with db.execute("SELECT * FROM users") as cursor:
             return await cursor.fetchall()
 
 
-async def async_fetch_older_users(db_name="users.db", age_limit=40):
-    """Fetch users older than age_limit asynchronously."""
-    async with aiosqlite.connect(db_name) as db:
-        async with db.execute("SELECT * FROM users WHERE age > ?", (age_limit,)) as cursor:
+async def async_fetch_older_users():
+    """Fetch users older than 40 asynchronously."""
+    async with aiosqlite.connect("users.db") as db:
+        async with db.execute("SELECT * FROM users WHERE age > 40") as cursor:
             return await cursor.fetchall()
 
 
@@ -42,7 +41,7 @@ async def fetch_concurrently():
 
 
 if __name__ == "__main__":
-    # Create sample data if not exists
+    # Ensure users table exists and seed if empty
     import sqlite3
     conn = sqlite3.connect("users.db")
     cur = conn.cursor()
