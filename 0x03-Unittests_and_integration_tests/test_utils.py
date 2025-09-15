@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Unit tests for utils and client modules:
+"""Unit tests for utils module:
 - access_nested_map
 - get_json
 - memoize
-- GithubOrgClient
 """
 
 import unittest
 from unittest.mock import patch
 from parameterized import parameterized
 from utils import access_nested_map, get_json, memoize
-from client import GithubOrgClient
 
 
 # =======================
@@ -77,39 +75,13 @@ class TestMemoize(unittest.TestCase):
             def a_property(self):
                 return self.a_method()
 
-        with patch.object(
-            TestClass, "a_method", return_value=42
-        ) as mock_method:
+        with patch.object(TestClass, "a_method", return_value=42) as mock_method:
             obj = TestClass()
             result1 = obj.a_property
             result2 = obj.a_property
             self.assertEqual(result1, 42)
             self.assertEqual(result2, 42)
             mock_method.assert_called_once()
-
-
-class TestGithubOrgClient(unittest.TestCase):
-    """Test cases for GithubOrgClient"""
-
-    @parameterized.expand([
-        ("google",),
-        ("abc",),
-    ])
-    @patch("client.get_json")
-    def test_org(self, org_name, mock_get_json):
-        """Test that GithubOrgClient.org returns correct value"""
-        expected_payload = {"org": org_name}
-        mock_get_json.return_value = expected_payload
-
-        client = GithubOrgClient(org_name)
-        result = client.org  # <-- FIXED: no parentheses
-
-        # Check that get_json was called once with the correct URL
-        mock_get_json.assert_called_once_with(
-            f"https://api.github.com/orgs/{org_name}"
-        )
-        # Check that the returned result matches the mocked payload
-        self.assertEqual(result, expected_payload)
 
 
 if __name__ == "__main__":
