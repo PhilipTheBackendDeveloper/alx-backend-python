@@ -68,6 +68,8 @@ class TestMemoize(unittest.TestCase):
         """Test that memoize caches a method call"""
 
         class TestClass:
+            """Simple class to test memoization"""
+
             def a_method(self):
                 return 42
 
@@ -85,9 +87,9 @@ class TestMemoize(unittest.TestCase):
 
 
 # =======================
-# Tests for GithubOrgClient
+# Placeholder for GithubOrgClient tests
 # =======================
-
+# You can implement TestGithubOrgClient here using patch and parameterized
 
 if __name__ == "__main__":
     unittest.main()
