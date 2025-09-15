@@ -25,9 +25,21 @@ class TestGithubOrgClient(unittest.TestCase):
         client = GithubOrgClient(org_name)
         result = client.org  # no parentheses because @memoize caches the dict
 
-        # Check that get_json was called once with the correct URL
         mock_get_json.assert_called_once_with(
             f"https://api.github.com/orgs/{org_name}"
         )
-        # Check that the returned result matches the mocked payload
         self.assertEqual(result, expected_payload)
+
+    def test_public_repos_url(self):
+        """Test that _public_repos_url returns correct URL from mocked org"""
+        mock_org_payload = {
+            "repos_url": "https://api.github.com/orgs/test/repos"}
+
+        client = GithubOrgClient("test")
+        with patch.object(
+            type(client), "org", new_callable=patch.PropertyMock
+        ) as mock_org:
+            mock_org.return_value = mock_org_payload
+            result = client._public_repos_url
+
+        self.assertEqual(result, mock_org_payload["repos_url"])
