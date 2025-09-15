@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Unit tests for client module:
-- GithubOrgClient
-"""
+"""Unit tests for GithubOrgClient class"""
+
+import unittest
+from unittest.mock import patch, PropertyMock
+from parameterized import parameterized
+from client import GithubOrgClient
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -32,7 +35,7 @@ class TestGithubOrgClient(unittest.TestCase):
 
         client = GithubOrgClient("test")
         with patch.object(
-            type(client), "org", new_callable=patch.PropertyMock
+            type(client), "org", new_callable=PropertyMock
         ) as mock_org:
             mock_org.return_value = mock_org_payload
             result = client._public_repos_url
@@ -42,7 +45,6 @@ class TestGithubOrgClient(unittest.TestCase):
     @patch("client.get_json")
     def test_public_repos(self, mock_get_json):
         """Test GithubOrgClient.public_repos returns expected list of repo names"""
-        # Example payload returned by get_json
         repo_payload = [
             {"name": "repo1", "license": {"key": "mit"}},
             {"name": "repo2", "license": {"key": "apache-2.0"}},
@@ -51,21 +53,20 @@ class TestGithubOrgClient(unittest.TestCase):
         mock_get_json.return_value = repo_payload
 
         client = GithubOrgClient("test")
-
-        # Patch the _public_repos_url property to return any URL
         with patch.object(
-            type(client), "_public_repos_url", new_callable=patch.PropertyMock
+            type(client), "_public_repos_url", new_callable=PropertyMock
         ) as mock_repos_url:
             mock_repos_url.return_value = "https://api.github.com/orgs/test/repos"
-            result = client.public_repos()  # No license filter
+            result = client.public_repos()
 
-            # Check that _public_repos_url was accessed once
             mock_repos_url.assert_called_once()
 
-        # Check that get_json was called once (via repos_payload property)
         mock_get_json.assert_called_once_with(
             "https://api.github.com/orgs/test/repos")
 
-        # Assert the result is list of repo names
         expected_repos = ["repo1", "repo2", "repo3"]
         self.assertEqual(result, expected_repos)
+
+
+if __name__ == "__main__":
+    unittest.main()
