@@ -31,7 +31,7 @@ class TestGithubOrgClient(unittest.TestCase):
         """Test that _public_repos_url returns expected value"""
         test_payload = {
             "repos_url": "https://api.github.com/orgs/testorg/repos"
-            }
+        }
         with patch.object(
             GithubOrgClient, "org", new_callable=PropertyMock
         ) as mock_org:
@@ -39,7 +39,7 @@ class TestGithubOrgClient(unittest.TestCase):
             client = GithubOrgClient("testorg")
             self.assertEqual(
                 client._public_repos_url, test_payload["repos_url"]
-                )
+            )
             mock_org.assert_called_once()
 
     @patch("client.get_json")
@@ -77,11 +77,13 @@ class TestGithubOrgClient(unittest.TestCase):
 
 class MockResponse:
     """Mocked response object with .json()"""
+
     def __init__(self, payload):
         self._payload = payload
 
     def json(self):
         return self._payload
+
 
 @parameterized_class((
     "org_payload", "repos_payload", "expected_repos", "apache2_repos"
