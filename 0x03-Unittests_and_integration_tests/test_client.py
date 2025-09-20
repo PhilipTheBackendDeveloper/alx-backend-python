@@ -33,7 +33,8 @@ class TestGithubOrgClient(unittest.TestCase):
     def test_public_repos_url(self):
         """Test that _public_repos_url returns correct URL from mocked org"""
         mock_org_payload = {
-            "repos_url": "https://api.github.com/orgs/test/repos"}
+            "repos_url": "https://api.github.com/orgs/test/repos"
+        }
         client = GithubOrgClient("test")
 
         with patch.object(type(client), "org", new_callable=PropertyMock) as mock_org:
@@ -53,13 +54,17 @@ class TestGithubOrgClient(unittest.TestCase):
         mock_get_json.return_value = repo_payload
 
         client = GithubOrgClient("test")
-        with patch.object(type(client), "_public_repos_url", new_callable=PropertyMock) as mock_repos_url:
+
+        with patch.object(
+            type(client), "_public_repos_url", new_callable=PropertyMock
+        ) as mock_repos_url:
             mock_repos_url.return_value = "https://api.github.com/orgs/test/repos"
             result = client.public_repos()
             mock_repos_url.assert_called_once()
 
         mock_get_json.assert_called_once_with(
-            "https://api.github.com/orgs/test/repos")
+            "https://api.github.com/orgs/test/repos"
+        )
         self.assertEqual(result, ["repo1", "repo2", "repo3"])
 
     @parameterized.expand([
@@ -123,7 +128,7 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
         client = GithubOrgClient("test")
         self.assertEqual(
             client.public_repos(license="apache-2.0"),
-            self.apache2_repos,
+            self.apache2_repos
         )
 
 
