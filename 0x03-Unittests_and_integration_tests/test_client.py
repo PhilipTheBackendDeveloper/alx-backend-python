@@ -30,14 +30,16 @@ class TestGithubOrgClient(unittest.TestCase):
     def test_public_repos_url(self):
         """Test that _public_repos_url returns expected value"""
         test_payload = {
-            "repos_url": "https://api.github.com/orgs/testorg/repos"}
+            "repos_url": "https://api.github.com/orgs/testorg/repos"
+            }
         with patch.object(
             GithubOrgClient, "org", new_callable=PropertyMock
         ) as mock_org:
             mock_org.return_value = test_payload
             client = GithubOrgClient("testorg")
-            self.assertEqual(client._public_repos_url,
-                             test_payload["repos_url"])
+            self.assertEqual(
+                client._public_repos_url, test_payload["repos_url"]
+                )
             mock_org.assert_called_once()
 
     @patch("client.get_json")
@@ -56,9 +58,10 @@ class TestGithubOrgClient(unittest.TestCase):
             mock_url.return_value = "https://api.github.com/orgs/testorg/repos"
             client = GithubOrgClient("testorg")
             result = client.public_repos()
-            expected = ["repo1", "repo2", "repo3"]
 
+            expected = ["repo1", "repo2", "repo3"]
             self.assertEqual(result, expected)
+
             mock_url.assert_called_once()
             mock_get_json.assert_called_once_with(mock_url.return_value)
 
@@ -74,13 +77,11 @@ class TestGithubOrgClient(unittest.TestCase):
 
 class MockResponse:
     """Mocked response object with .json()"""
-
     def __init__(self, payload):
         self._payload = payload
 
     def json(self):
         return self._payload
-
 
 @parameterized_class((
     "org_payload", "repos_payload", "expected_repos", "apache2_repos"
@@ -94,9 +95,18 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
     def setUpClass(cls):
         """Start patcher for requests.get and mock responses."""
         cls.get_patcher = patch("requests.get")
+
         mock_get = cls.get_patcher.start()
 
+        # Side effect function to simulate API responses
         def side_effect(url):
+            class MockResponse:
+                def __init__(self, payload):
+                    self._payload = payload
+
+                def json(self):
+                    return self._payload
+
             if url == GithubOrgClient.ORG_URL.format(org="testorg"):
                 return MockResponse(cls.org_payload)
             elif url == cls.org_payload["repos_url"]:
