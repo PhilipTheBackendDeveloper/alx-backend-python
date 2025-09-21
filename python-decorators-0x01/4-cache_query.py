@@ -1,63 +1,32 @@
 #!/usr/bin/env python3
-"""
-4-cache_query.py
-
-Implements:
- - with_db_connection: ensures DB connection lifecycle.
- - cache_query: caches query results to avoid redundant DB calls.
-
-Usage:
-    users = fetch_users_with_cache(query="SELECT * FROM users")
-    users_again = fetch_users_with_cache(query="SELECT * FROM users")
-"""
-
+import time
 import sqlite3
 import functools
-from typing import Callable, Any, Optional
 
-# Global dictionary for caching query results
+# simple in-memory query cache
 query_cache = {}
 
 
-# ------------------------------
-# Decorator 1: with_db_connection
-# ------------------------------
-def with_db_connection(func: Callable) -> Callable:
-    """
-    Ensures wrapped function has a sqlite3 connection.
-    - If `conn` is provided, it will be used (not closed).
-    - If not, it will open `users.db`, inject it, and close afterwards.
-    """
+def with_db_connection(func):
+    """Decorator to handle opening and closing database connections"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if "conn" in kwargs and kwargs["conn"] is not None:
-            return func(*args, **kwargs)
-
-        conn: Optional[sqlite3.Connection] = None
+        conn = sqlite3.connect("users.db")
         try:
-            conn = sqlite3.connect("users.db")
-            return func(conn, *args, **kwargs)
+            result = func(conn, *args, **kwargs)
         finally:
-            if conn:
-                conn.close()
+            conn.close()
+        return result
     return wrapper
 
 
-# ------------------------------
-# Decorator 2: cache_query
-# ------------------------------
-def cache_query(func: Callable) -> Callable:
-    """
-    Decorator to cache query results based on the SQL query string.
-    - Uses a global dictionary `query_cache`.
-    - Key is the SQL query string.
-    - Avoids re-executing the same query multiple times.
-    """
+def cache_query(func):
+    """Decorator to cache query results based on SQL query string"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        query = kwargs.get("query") or (args[1] if len(args) > 1 else None)
-        if query is None:
-            raise ValueError("cache_query requires 'query' argument")
+        query = kwargs.get("query", None)
+        if query is None and len(args) > 1:  # skip conn, get query from second arg
+            query = args[1]
 
         if query in query_cache:
             print(f"[CACHE HIT] Returning cached result for: {query}")
@@ -70,55 +39,20 @@ def cache_query(func: Callable) -> Callable:
     return wrapper
 
 
-# ------------------------------
-# Example usage
-# ------------------------------
 @with_db_connection
 @cache_query
-def fetch_users_with_cache(conn: sqlite3.Connection, query: str):
-    """
-    Fetch users from DB. Results are cached by query string.
-    """
+def fetch_users_with_cache(conn, query):
     cursor = conn.cursor()
     cursor.execute(query)
     return cursor.fetchall()
 
 
-# --- helper for testing locally ---
-def _ensure_sample_db():
-    """Create users.db with a sample users table if missing."""
-    conn = sqlite3.connect("users.db")
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        email TEXT NOT NULL
-    );
-    """)
-    cur.execute("SELECT COUNT(*) FROM users;")
-    if cur.fetchone()[0] == 0:
-        cur.executemany(
-            "INSERT INTO users (username, email) VALUES (?, ?);",
-            [("alice", "alice@example.com"),
-             ("bob", "bob@example.com"),
-             ("carol", "carol@example.com")]
-        )
-        conn.commit()
-    conn.close()
-
-
+# Example usage
 if __name__ == "__main__":
-    _ensure_sample_db()
-
-    print("\n--- First call (cache miss, DB executed) ---")
+    # First call -> runs query
     users = fetch_users_with_cache(query="SELECT * FROM users")
     print(users)
 
-    print("\n--- Second call (cache hit, no DB query) ---")
+    # Second call -> returns from cache
     users_again = fetch_users_with_cache(query="SELECT * FROM users")
     print(users_again)
-
-    print("\n--- Different query (new cache miss) ---")
-    one_user = fetch_users_with_cache(query="SELECT * FROM users WHERE id = 1")
-    print(one_user)

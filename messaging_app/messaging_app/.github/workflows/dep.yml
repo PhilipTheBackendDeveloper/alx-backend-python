@@ -1,0 +1,28 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [ "main" ]   # شغل الـ workflow عند أي push للفرع main
+  workflow_dispatch:       # كمان تقدر تشغله يدويًا
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/messaging_app:latest messaging_app
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/messaging_app:latest

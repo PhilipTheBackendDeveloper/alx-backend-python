@@ -1,31 +1,23 @@
-# ALX Backend Python - 0x03: Unittests and Integration Tests
+# 0x03. Unittests and Integration Tests
 
-This repository contains exercises and projects related to backend development in Python, with a focus on unit testing and integration testing.
+This project covers how to write unit tests and integration tests in Python using the `unittest` framework. It includes:
 
-## Project: Test `utils.access_nested_map`
+- Writing unit tests with `unittest.TestCase`
+- Using `parameterized.expand` to test functions with multiple inputs
+- Mocking HTTP calls and functions using `unittest.mock`
+- Understanding the difference between unit and integration testing
+- Testing decorators like `@memoize`
 
-### Overview
+## Files
 
-In this task, we write our first unit test for the function `access_nested_map` located in `utils.py`. This function is used to access nested dictionaries using a tuple path.
+- `utils.py`: Contains utility functions like `access_nested_map`, `get_json`, and `memoize`.
+- `test_utils.py`: Contains unit tests for the utility functions.
+- `client.py`: Used later in integration tests.
+- `fixtures.py`: Contains test data for integration testing.
 
-### Objective
+## How to Run Tests
 
-- Understand the purpose of `utils.access_nested_map`.
-- Write unit tests to validate that it behaves as expected for different input cases.
+To execute the test file:
 
-### Instructions
-
-1. Create a `TestAccessNestedMap` class inheriting from `unittest.TestCase`.
-2. Implement the method `test_access_nested_map` to test `access_nested_map`.
-3. Use `@parameterized.expand` to test the following cases:
-
-   | Nested Map        | Path         | Expected Result |
-   | ----------------- | ------------ | --------------- |
-   | `{"a": 1}`        | `("a",)`     | `1`             |
-   | `{"a": {"b": 2}}` | `("a",)`     | `{"b": 2}`      |
-   | `{"a": {"b": 2}}` | `("a", "b")` | `2`             |
-
-4. Each test should use `assertEqual` to verify the expected result.
-5. Keep the body of the test method concise (≤ 2 lines).
-
-### File Structure
+```bash
+python3 -m unittest test_utils.py

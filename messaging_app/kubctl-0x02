@@ -1,0 +1,16 @@
+#!/bin/bash
+# Script for Blue-Green Deployment
+
+set -e
+
+echo "=== Deploying BLUE version ==="
+kubectl apply -f messaging_app/blue_deployment.yaml
+
+echo "=== Deploying GREEN version ==="
+kubectl apply -f messaging_app/green_deployment.yaml
+
+echo "=== Applying service configuration ==="
+kubectl apply -f messaging_app/kubeservice.yaml
+
+echo "=== Checking logs for GREEN deployment ==="
+kubectl logs -l app=django-green --tail=20

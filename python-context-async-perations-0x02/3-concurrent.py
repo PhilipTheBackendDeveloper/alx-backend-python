@@ -1,72 +1,34 @@
 #!/usr/bin/env python3
-"""
-3-concurrent.py
-
-Run multiple database queries concurrently using asyncio.gather
-with aiosqlite for async DB access.
-"""
-
 import asyncio
 import aiosqlite
 
 
 async def async_fetch_users():
-    """Fetch all users asynchronously."""
+    """Fetch all users from the database"""
     async with aiosqlite.connect("users.db") as db:
         async with db.execute("SELECT * FROM users") as cursor:
-            return await cursor.fetchall()
+            rows = await cursor.fetchall()
+            return rows
 
 
 async def async_fetch_older_users():
-    """Fetch users older than 40 asynchronously."""
+    """Fetch users older than 40 from the database"""
     async with aiosqlite.connect("users.db") as db:
         async with db.execute("SELECT * FROM users WHERE age > 40") as cursor:
-            return await cursor.fetchall()
+            rows = await cursor.fetchall()
+            return rows
 
 
 async def fetch_concurrently():
-    """Run both fetch queries concurrently using asyncio.gather."""
-    results_all, results_older = await asyncio.gather(
+    """Run both queries concurrently"""
+    users, older_users = await asyncio.gather(
         async_fetch_users(),
         async_fetch_older_users()
     )
 
-    print("\nAll Users:")
-    for user in results_all:
-        print(user)
-
-    print("\nUsers older than 40:")
-    for user in results_older:
-        print(user)
+    print("All users:", users)
+    print("Users older than 40:", older_users)
 
 
 if __name__ == "__main__":
-    # Ensure users table exists and seed if empty
-    import sqlite3
-    conn = sqlite3.connect("users.db")
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        email TEXT NOT NULL,
-        age INTEGER DEFAULT 30
-    )
-    """)
-    cur.execute("SELECT COUNT(*) FROM users")
-    if cur.fetchone()[0] == 0:
-        cur.executemany(
-            "INSERT INTO users (username, email, age) VALUES (?, ?, ?)",
-            [
-                ("alice", "alice@example.com", 22),
-                ("bob", "bob@example.com", 29),
-                ("carol", "carol@example.com", 34),
-                ("david", "david@example.com", 45),
-                ("eva", "eva@example.com", 52),
-            ]
-        )
-        conn.commit()
-    conn.close()
-
-    # Run async queries concurrently
     asyncio.run(fetch_concurrently())

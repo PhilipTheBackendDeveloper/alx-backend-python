@@ -1,0 +1,25 @@
+#!/bin/bash
+# Script to scale Django app to 3 replicas, test load, and monitor usage
+
+set -e  # exit if any command fails
+
+DEPLOYMENT_NAME=django-messaging
+SERVICE_NAME=django-service
+NAMESPACE=default
+
+echo "=== Scaling $DEPLOYMENT_NAME to 3 replicas ==="
+kubectl scale deployment "$DEPLOYMENT_NAME" --replicas=3
+
+echo "=== Verifying running pods ==="
+kubectl get pods -l app=django-messaging -n "$NAMESPACE"
+
+echo "=== Getting Minikube IP and exposing NodePort for testing ==="
+MINIKUBE_IP=$(minikube ip)
+NODE_PORT=$(kubectl get svc "$SERVICE_NAME" -n "$NAMESPACE" -o=jsonpath='{.spec.ports[0].nodePort}')
+
+echo "=== Load testing with wrk ==="
+echo "Target: http://$MINIKUBE_IP:$NODE_PORT"
+wrk -t4 -c100 -d15s "http://$MINIKUBE_IP:$NODE_PORT"
+
+echo "=== Monitoring resource usage ==="
+kubectl top pods -n "$NAMESPACE"

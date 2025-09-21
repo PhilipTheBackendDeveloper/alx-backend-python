@@ -1,0 +1,31 @@
+#!/bin/bash
+# Script to perform rolling update on blue deployment
+
+set -e
+
+DEPLOYMENT_NAME=django-blue
+SERVICE_NAME=django-service
+NAMESPACE=default
+
+echo "=== Applying updated deployment (version 2.0) ==="
+kubectl apply -f messaging_app/blue_deployment.yaml
+
+echo "=== Monitoring rollout progress ==="
+kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE
+
+echo "=== Getting Minikube IP and NodePort for testing ==="
+MINIKUBE_IP=$(minikube ip)
+NODE_PORT=$(kubectl get svc $SERVICE_NAME -n $NAMESPACE -o=jsonpath='{.spec.ports[0].nodePort}')
+
+echo "=== Testing for downtime ==="
+for i in {1..20}; do
+    if curl -s --max-time 2 http://$MINIKUBE_IP:$NODE_PORT > /dev/null; then
+        echo "[$i] Request OK"
+    else
+        echo "[$i] Request FAILED"
+    fi
+    sleep 1
+done
+
+echo "=== Verifying pods after update ==="
+kubectl get pods -l app=$DEPLOYMENT_NAME -n $NAMESPACE
