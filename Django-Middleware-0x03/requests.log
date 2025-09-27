@@ -1,0 +1,18 @@
+# Django-Middleware-0x03/chats/middleware.py
+
+import logging
+
+# This line is the key:
+logging.basicConfig(
+    filename='requests.log',  # <-- This tells the logger to create/use a file with this name
+    level=logging.INFO,
+    format='%(message)s'
+)
+
+class RequestLoggingMiddleware:
+    # ...
+    def __call__(self, request):
+        # ...
+        # This line does the actual writing to the file:
+        logging.info(log_message)
+        # ...
