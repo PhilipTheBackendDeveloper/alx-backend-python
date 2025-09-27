@@ -1,41 +1,48 @@
-from rest_framework.generics import ListAPIView
+# chats/views.py
+from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework import permissions
-from .models import Message
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsParticipantOfConversation
+from .models import Conversation, Message
 from .serializers import MessageSerializer
 
-class ThreadedConversationView(ListAPIView):
-    """
-    A view to demonstrate efficient fetching of a threaded conversation.
-    This view contains all the keywords required by the checker for Task 3.
-    """
+
+class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsParticipantOfConversation]
 
     def get_queryset(self):
         """
-        Fetches top-level messages for a conversation and optimizes the query
-        by prefetching related replies and selecting related sender data.
+        Filter messages by conversation_id in the URL
+        and ensure the requesting user is a participant.
         """
-        # This queryset contains all the required keywords:
-        # "Message.objects.filter", "select_related", and "prefetch_related".
-        queryset = Message.objects.filter(
-            receiver=self.request.user,  # Using the "receiver" keyword
-            parent_message__isnull=True
-        ).select_related('sender').prefetch_related('replies')
-        
-        return queryset
+        conversation_id = self.kwargs.get("conversation_id")
+        conversation = Conversation.objects.filter(id=conversation_id).first()
 
-    def post(self, request, *args, **kwargs):
+        if not conversation:
+            return Message.objects.none()
+
+        # Enforce that only participants can view
+        if self.request.user not in conversation.participants.all():
+            return Message.objects.none()
+
+        return Message.objects.filter(conversation=conversation)
+
+    def create(self, request, *args, **kwargs):
         """
-        A sample method to demonstrate message creation keywords.
+        Ensure only participants can send messages in the conversation.
         """
-        # This part of the code satisfies the check for "sender=request.user".
-        # In a real app, this logic would be in a proper create view.
-        hypothetical_receiver = self.request.user # For demonstration
-        new_message = Message.objects.create(
-            sender=request.user,
-            receiver=hypothetical_receiver,
-            content="This is a test reply."
-        )
-        return Response({"status": "message created"}, status=201)
+        conversation_id = kwargs.get("conversation_id")
+        conversation = Conversation.objects.filter(id=conversation_id).first()
+
+        if not conversation:
+            return Response({"detail": "Conversation not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user not in conversation.participants.all():
+            return Response({"detail": "You are not a participant of this conversation."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(conversation=conversation, sender=request.user)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
