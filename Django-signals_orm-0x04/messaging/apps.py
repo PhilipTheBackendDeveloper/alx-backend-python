@@ -1,9 +1,12 @@
 from django.apps import AppConfig
 
-
 class MessagingConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'messaging'
 
     def ready(self):
-        import messaging.signals  # ✅ ensures signals register
+        """
+        This method is called when the app is ready.
+        It's the recommended place to import and connect signals.
+        """
+        import messaging.signals
