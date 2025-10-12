@@ -1,36 +1,58 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import sqlite3
 
 
 class DatabaseConnection:
-    """Context manager for SQLite database connection"""
+    """Custom context manager for handling SQLite database connections."""
 
-    def __init__(self, db_name):
-        """Initialize with database file name"""
+    def __init__(self, db_name="users.db"):
         self.db_name = db_name
         self.conn = None
-        self.cursor = None
 
     def __enter__(self):
-        """Open the connection and return a cursor"""
+        """Open database connection and return it."""
         self.conn = sqlite3.connect(self.db_name)
-        self.cursor = self.conn.cursor()
-        return self.cursor
+        return self.conn
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Commit changes (if no exception), rollback otherwise, then close"""
+        """Close database connection safely, even if an error occurs."""
         if self.conn:
-            if exc_type is None:
-                self.conn.commit()
-            else:
-                self.conn.rollback()
             self.conn.close()
 
 
+# Example usage
 if __name__ == "__main__":
-    # Use the custom context manager with a SELECT query
-    with DatabaseConnection("test.db") as cursor:
+    with DatabaseConnection("users.db") as conn:
+        cursor = conn.cursor()
+
+        # Ensure table exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL
+            )
+        """)
+
+        # Insert multiple rows if table is empty
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 1:
+            sample_users = [
+                ("Eric Hackman", "eric@example.com"),
+                ("Faith Okoth", "faith@example.com"),
+                ("John Doe", "john@example.com"),
+                ("Jane Smith", "jane@example.com"),
+                ("Michael Brown", "michael@example.com"),
+                ("Alice Johnson", "alice@example.com"),
+                ("Bob Williams", "bob@example.com"),
+            ]
+            cursor.executemany(
+                "INSERT INTO users (name, email) VALUES (?, ?)", sample_users
+            )
+            conn.commit()
+
+        # Fetch and print results
         cursor.execute("SELECT * FROM users")
-        rows = cursor.fetchall()
-        for row in rows:
+        results = cursor.fetchall()
+        for row in results:
             print(row)

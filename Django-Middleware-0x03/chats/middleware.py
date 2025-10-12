@@ -1,121 +1,104 @@
-# Django-Middleware-0x03/chats/middleware.py
-
-import logging
+# chats/middleware.py
+import os
 from datetime import datetime
-from django.http import HttpResponseForbidden, JsonResponse
+from django.conf import settings
+from django.http import HttpResponseForbidden
 import time
-from django.core.cache import cache
 
-# ... (Logging setup remains the same) ...
-logging.basicConfig(filename='requests.log', level=logging.INFO, format='%(message)s')
 
 class RequestLoggingMiddleware:
-    # ... (Keep this class as it is) ...
     def __init__(self, get_response):
         self.get_response = get_response
+        # Path to parent directory of this file
+        self.log_file_path = os.path.join(settings.BASE_DIR, 'requests.log')
+
     def __call__(self, request):
-        user = request.user if request.user.is_authenticated else 'AnonymousUser'
-        log_message = f"{datetime.now()} - User: {user} - Path: {request.path}"
-        logging.info(log_message)
+        user = request.user if request.user.is_authenticated else "Anonymous"
+        log_entry = f"{datetime.now()} - User: {user} - Path: {request.path}\n"
+
+        with open(self.log_file_path, "a") as log_file:
+            log_file.write(log_entry)
+
         response = self.get_response(request)
         return response
 
 class RestrictAccessByTimeMiddleware:
-    # ... (Keep this class as it is) ...
     def __init__(self, get_response):
         self.get_response = get_response
+
     def __call__(self, request):
-        if request.path.startswith('/api/'):
+        # Only restrict access to chat app endpoints
+        if request.path.startswith('/api/'):  
             current_hour = datetime.now().hour
-            if not (9 <= current_hour < 18):
-                return HttpResponseForbidden("Access is restricted to between 9 AM and 6 PM.")
+            if current_hour < 6 or current_hour >= 21:  
+                return HttpResponseForbidden("Chat access is restricted between 9 PM and 6 AM.")
+
         response = self.get_response(request)
         return response
 
-class OffensiveLanguageMiddleware: # Rate Limiting Middleware
-    # ... (Keep this class as it is) ...
+class OffensiveLanguageMiddleware:
+    """
+    Middleware to limit the number of messages a user can send per minute based on IP.
+    """
     def __init__(self, get_response):
         self.get_response = get_response
-        self.limit = 5
-        self.period = 60
+        # Store message timestamps for each IP
+        self.message_log = {}
+
     def __call__(self, request):
-        if request.method == 'POST' and 'messages' in request.path:
-            ip_address = request.META.get('REMOTE_ADDR')
-            if not ip_address:
-                return JsonResponse({'error': 'Could not identify client IP.'}, status=400)
-            cache_key = f"rate_limit_{ip_address}"
-            request_timestamps = cache.get(cache_key, [])
-            current_time = time.time()
-            valid_timestamps = [ts for ts in request_timestamps if current_time - ts < self.period]
-            if len(valid_timestamps) >= self.limit:
-                return JsonResponse({'error': 'Request limit exceeded. Please try again later.'}, status=429)
-            valid_timestamps.append(current_time)
-            cache.set(cache_key, valid_timestamps, self.period)
+        # Only track POST requests to the chat endpoint
+        if request.method == 'POST' and request.path.startswith('/api/'):  # adjust path if needed
+            ip = self.get_client_ip(request)
+            now = time.time()
+            window = 60  # 1 minute time window
+            limit = 5  # max 5 messages per minute
+
+            # Initialize list if IP not in log
+            if ip not in self.message_log:
+                self.message_log[ip] = []
+
+            # Remove timestamps outside the window
+            self.message_log[ip] = [t for t in self.message_log[ip] if now - t < window]
+
+            # Check if limit exceeded
+            if len(self.message_log[ip]) >= limit:
+                return HttpResponseForbidden("You have exceeded the message limit. Please wait before sending more messages.")
+
+            # Record the new message timestamp
+            self.message_log[ip].append(now)
+
         response = self.get_response(request)
         return response
 
-# --- New Middleware for this task ---
-class RolePermissionMiddleware:
+    def get_client_ip(self, request):
+        """
+        Get client IP address from request headers.
+        """
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+class RolepermissionMiddleware:
     """
-    Middleware that checks a user's role before allowing access to
-    specific, admin-only actions or paths.
+    Middleware to enforce role-based permissions on chat actions.
+    Only users with roles 'admin' or 'moderator' are allowed.
     """
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # We define a list of paths or actions that require admin privileges.
-        # Let's say any 'DELETE' request to our API is admin-only.
-        # And accessing Django's admin site should also be restricted.
-        is_admin_path = request.path.startswith('/admin/')
-        is_sensitive_method = request.method in ['DELETE', 'PUT', 'PATCH']
+        # Example: Only restrict access for POST, PUT, DELETE to /api/admin/ or /api/moderator/ paths
+        restricted_paths = ['/api/admin/', '/api/moderator/']  # adjust paths as needed
 
-        # We only apply this check if the user is trying to access a sensitive area.
-        if is_admin_path or (request.path.startswith('/api/') and is_sensitive_method):
-            # First, ensure the user is logged in.
-            if not request.user.is_authenticated:
-                return HttpResponseForbidden("Access Denied: Authentication required.")
+        if any(request.path.startswith(path) for path in restricted_paths):
+            user = getattr(request, 'user', None)
             
-            # Now, check the role. We assume the role is stored on the user model.
-            # The role should be checked in uppercase to be safe.
-            if not hasattr(request.user, 'role') or request.user.role.upper() != 'ADMIN':
-                return HttpResponseForbidden("Access Denied: Admin privileges required.")
-        
-        # If the path is not restricted or the user is an admin, proceed.
-        response = self.get_response(request)
-        return response
-    
-    # Django-Middleware-0x03/chats/middleware.py
+            # Check if user is authenticated and has allowed role
+            if not user or not user.is_authenticated or user.role not in ['admin', 'moderator']:
+                return HttpResponseForbidden("You do not have permission to perform this action.")
 
-import logging
-from datetime import datetime
-from django.http import HttpResponseForbidden, JsonResponse
-import time
-from django.core.cache import cache
-
-# ... (Keep your other three middleware classes: RequestLoggingMiddleware, etc.) ...
-
-
-# --- New Middleware for this task ---
-class RolepermissionMiddleware:  # <-- EXACT NAME AS REQUIRED BY CHECKER
-    """
-    Middleware that checks a user's role before allowing access.
-    """
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        # We will restrict access to the /admin/ path
-        if request.path.startswith('/admin/'):
-            if not request.user.is_authenticated:
-                return HttpResponseForbidden("Access Denied: Authentication required.")
-            
-            # Check if user has a 'role' attribute and if it is 'ADMIN'
-            user_role = getattr(request.user, 'role', '').upper()
-            if user_role not in ['ADMIN', 'MODERATOR']: # As per instruction
-                return HttpResponseForbidden(
-                    "Access Denied: Admin or Moderator privileges required."
-                )
-        
         response = self.get_response(request)
         return response

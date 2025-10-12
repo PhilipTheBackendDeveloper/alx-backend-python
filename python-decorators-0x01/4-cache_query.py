@@ -1,39 +1,32 @@
-#!/usr/bin/env python3
-import time
+#!/usr/bin/python3
 import sqlite3
 import functools
 
-# simple in-memory query cache
+# In-memory cache dictionary
 query_cache = {}
 
 
 def with_db_connection(func):
-    """Decorator to handle opening and closing database connections"""
+    """Decorator to manage opening and closing DB connection"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         conn = sqlite3.connect("users.db")
         try:
-            result = func(conn, *args, **kwargs)
+            return func(conn, *args, **kwargs)
         finally:
             conn.close()
-        return result
     return wrapper
 
 
 def cache_query(func):
-    """Decorator to cache query results based on SQL query string"""
+    """Decorator to cache query results"""
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        query = kwargs.get("query", None)
-        if query is None and len(args) > 1:  # skip conn, get query from second arg
-            query = args[1]
-
+    def wrapper(conn, query, *args, **kwargs):
         if query in query_cache:
-            print(f"[CACHE HIT] Returning cached result for: {query}")
+            # Return cached result
             return query_cache[query]
-
-        print(f"[CACHE MISS] Executing query: {query}")
-        result = func(*args, **kwargs)
+        # Execute query and store result in cache
+        result = func(conn, query, *args, **kwargs)
         query_cache[query] = result
         return result
     return wrapper
@@ -47,12 +40,11 @@ def fetch_users_with_cache(conn, query):
     return cursor.fetchall()
 
 
-# Example usage
 if __name__ == "__main__":
-    # First call -> runs query
+    # First call → hits DB
     users = fetch_users_with_cache(query="SELECT * FROM users")
-    print(users)
+    print("First call:", users)
 
-    # Second call -> returns from cache
+    # Second call → uses cache
     users_again = fetch_users_with_cache(query="SELECT * FROM users")
-    print(users_again)
+    print("Second call (from cache):", users_again)

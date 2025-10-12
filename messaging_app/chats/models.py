@@ -1,32 +1,41 @@
+#!/usr/bin/env python3
+"""Models for the chats app: User, Conversation, Message."""
+
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 
-class CustomUser(AbstractUser):
-    """Extended user model with UUID primary key and additional fields."""
+class User(AbstractUser):
+    """Custom User model extending Django's AbstractUser with extra fields."""
     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=20, null=True, blank=True)
-
-    ROLE_CHOICES = [
-        ('guest', 'Guest'),
-        ('host', 'Host'),
-        ('admin', 'Admin'),
-    ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    role = models.CharField(
+        max_length=10,
+        choices=[
+            ('guest', 'Guest'),
+            ('host', 'Host'),
+            ('admin', 'Admin'),
+        ],
+        default='guest',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    REQUIRED_FIELDS = ['email', 'first_name', 'last_name', 'role']
+    # Ensure email is unique
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128, null=False)
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["username", "first_name", "last_name"]
 
     def __str__(self):
-        return self.username
+        return f"{self.first_name} {self.last_name} ({self.email})"
 
 
 class Conversation(models.Model):
-    """Tracks which users are part of a conversation."""
+    """Model to track conversations between users."""
     conversation_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    participants = models.ManyToManyField(CustomUser, related_name='conversations')
+    participants = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -34,75 +43,12 @@ class Conversation(models.Model):
 
 
 class Message(models.Model):
-    """Message sent by a user in a conversation."""
+    """Model for messages sent in a conversation."""
     message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages')
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages_sent")
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
     message_body = models.TextField()
     sent_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.sender.username[:15]}: {self.message_body[:30]}"
-import uuid
-from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.conf import settings
-
-class User(AbstractUser):
-    """
-    Custom User model extending Django's AbstractUser.
-    This model includes all standard Django user fields and adds custom ones.
-    The 'password' field is inherited from AbstractUser and handles hashing.
-    """
-    class Role(models.TextChoices):
-        GUEST = 'GUEST', 'Guest'
-        HOST = 'HOST', 'Host'
-        ADMIN = 'ADMIN', 'Admin'
-
-    # The project asks for 'user_id' but Django's convention is 'id'.
-    # We will use 'id' to maintain compatibility with the framework.
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
-    # Add the custom fields required by the specification.
-    phone_number = models.CharField(max_length=20, blank=True, null=True)
-    role = models.CharField(max_length=10, choices=Role.choices, default=Role.GUEST)
-
-    # Note: 'first_name', 'last_name', 'email' are already part of AbstractUser.
-    # The 'created_at' field is covered by 'date_joined' in AbstractUser.
-
-    def __str__(self):
-        return self.username
-
-
-class Conversation(models.Model):
-    """Tracks which users are involved in a conversation."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # Use settings.AUTH_USER_MODEL to refer to the active User model.
-    participants = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='conversations'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Conversation involving {self.participants.count()} users"
-
-
-class Message(models.Model):
-    """A single message sent by a user within a conversation."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    conversation = models.ForeignKey(
-        Conversation,
-        on_delete=models.CASCADE,
-        related_name='messages'
-    )
-    sender = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='sent_messages'
-    )
-    message_body = models.TextField()
-    sent_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Message from {self.sender.username}"
+        return f"Message from {self.sender.email} at {self.sent_at}"

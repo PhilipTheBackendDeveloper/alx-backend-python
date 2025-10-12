@@ -2,29 +2,30 @@
 import seed
 
 def stream_user_ages():
-    """Generator that yields user ages one by one"""
-    connection = seed.connect_to_prodev()
+    """Generator that yields user ages one by one from user_data"""
+    connection = seed.connect_db()
     cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT age FROM user_data")
-    
-    for row in cursor:        # Loop 1
-        yield row['age']      # Yield one age at a time
-    
+
+    for row in cursor:
+        yield row["age"]
+
     cursor.close()
     connection.close()
-    return                    # End of generator
+
 
 def calculate_average_age():
-    """Calculate average age using the generator"""
-    total = 0
+    """Calculate average age of users using the generator"""
+    total_age = 0
     count = 0
-    
-    for age in stream_user_ages():  # Loop 2
-        total += age
+
+    for age in stream_user_ages():
+        total_age += age
         count += 1
-    
-    if count == 0:
-        return 0
-    
-    average = total / count
-    print(f"Average age of users: {average}")
+
+    average = total_age / count if count > 0 else 0
+    print(f"Average age of users: {average:.2f}")
+
+
+if __name__ == "__main__":
+    calculate_average_age()
