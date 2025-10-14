@@ -1,16 +1,21 @@
 #!/bin/bash
-# Script for Blue-Green Deployment
+# Deploy Blue-Green strategy
 
-set -e
+echo "Applying Blue Deployment..."
+kubectl apply -f blue_deployment.yaml
 
-echo "=== Deploying BLUE version ==="
-kubectl apply -f messaging_app/blue_deployment.yaml
+echo "Applying Green Deployment..."
+kubectl apply -f green_deployment.yaml
 
-echo "=== Deploying GREEN version ==="
-kubectl apply -f messaging_app/green_deployment.yaml
+echo "Applying Service..."
+kubectl apply -f kubeservice.yaml
 
-echo "=== Applying service configuration ==="
-kubectl apply -f messaging_app/kubeservice.yaml
+echo "Checking all deployments..."
+kubectl get deployments
 
-echo "=== Checking logs for GREEN deployment ==="
-kubectl logs -l app=django-green --tail=20
+echo "Checking all pods..."
+kubectl get pods
+
+echo "Checking logs for Green Deployment..."
+GREEN_POD=$(kubectl get pods -l version=green -o jsonpath="{.items[0].metadata.name}")
+kubectl logs $GREEN_POD
