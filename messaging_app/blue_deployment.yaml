@@ -2,20 +2,28 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: django-blue
+  labels:
+    app: django-blue
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
-      app: django
-      version: blue
+      app: django-blue
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
-        app: django
-        version: blue
+        app: django-blue
     spec:
       containers:
-        - name: django
-          image: your-django-image:blue
+        - name: django-app
+          image: your-dockerhub-username/django-messaging:2.0
           ports:
             - containerPort: 8000
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: messaging_app.settings

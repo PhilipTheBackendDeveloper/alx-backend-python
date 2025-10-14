@@ -1,31 +1,26 @@
 #!/bin/bash
-# Script to perform rolling update on blue deployment
 
-set -e
-
-DEPLOYMENT_NAME=django-blue
-SERVICE_NAME=django-service
-NAMESPACE=default
-
-echo "=== Applying updated deployment (version 2.0) ==="
+# Step 1: Apply updated deployment (trigger rolling update)
+echo "🚀 Applying rolling update for django-blue..."
 kubectl apply -f messaging_app/blue_deployment.yaml
 
-echo "=== Monitoring rollout progress ==="
-kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE
+# Step 2: Monitor rollout progress
+echo "🔍 Monitoring rollout status..."
+kubectl rollout status deployment/django-blue
 
-echo "=== Getting Minikube IP and NodePort for testing ==="
-MINIKUBE_IP=$(minikube ip)
-NODE_PORT=$(kubectl get svc $SERVICE_NAME -n $NAMESPACE -o=jsonpath='{.spec.ports[0].nodePort}')
+# Step 3: Continuous health check (simulate user requests)
+SERVICE_URL="http://localhost:8000"  # Change if Ingress or NodePort differs
+echo "🩺 Checking for downtime during rollout..."
 
-echo "=== Testing for downtime ==="
 for i in {1..20}; do
-    if curl -s --max-time 2 http://$MINIKUBE_IP:$NODE_PORT > /dev/null; then
-        echo "[$i] Request OK"
-    else
-        echo "[$i] Request FAILED"
-    fi
-    sleep 1
+  if curl -s --head --request GET "$SERVICE_URL" | grep "200 OK" > /dev/null; then
+    echo "✅ App responding normally (request $i)"
+  else
+    echo "❌ Possible downtime detected (request $i)"
+  fi
+  sleep 3
 done
 
-echo "=== Verifying pods after update ==="
-kubectl get pods -l app=$DEPLOYMENT_NAME -n $NAMESPACE
+# Step 4: Verify pods after rollout
+echo "📦 Verifying running pods after rollout..."
+kubectl get pods -l app=django-blue
