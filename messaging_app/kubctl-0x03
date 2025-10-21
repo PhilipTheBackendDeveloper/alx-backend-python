@@ -24,3 +24,4 @@ done
 # Step 4: Verify pods after rollout
 echo "📦 Verifying running pods after rollout..."
 kubectl get pods -l app=django-blue
+        
