@@ -1,18 +1,20 @@
 pipeline {
     agent any
 
-    tools {
-        // Optional: use Python tool if installed on Jenkins
-    }
-
     environment {
-        GITHUB_CREDENTIALS = 'github-creds-id'  // <-- Replace with your credentials ID
+        GITHUB_CREDENTIALS = 'github-creds-id'      // Jenkins GitHub credentials
+        DOCKER_CREDENTIALS = 'dockerhub-creds-id'   // Jenkins Docker Hub credentials
+        DOCKERHUB_USER = 'philipthebackenddeveloper'
+        IMAGE_NAME = 'messaging_app'
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
-                git credentialsId: env.GITHUB_CREDENTIALS, url: 'https://github.com/<your-username>/alx-backend-python.git'
+                git branch: 'week9/ci-cd-pipeline',
+                    credentialsId: env.GITHUB_CREDENTIALS,
+                    url: 'https://github.com/PhilipTheBackendDeveloper/alx-backend-python.git'
             }
         }
 
@@ -41,6 +43,27 @@ pipeline {
         stage('Archive Test Report') {
             steps {
                 junit 'messaging_app/report.xml'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $DOCKERHUB_USER/$IMAGE_NAME:latest ./messaging_app
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS,
+                                                    usernameVariable: 'DOCKER_USER',
+                                                    passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker push $DOCKERHUB_USER/$IMAGE_NAME:latest
+                    '''
+                }
             }
         }
     }
